@@ -4,6 +4,7 @@ import adpro.state.*
 import adpro.state.RNG.Simple
 import scala.util.Random
 import adpro.state.RNG.Rand
+import java.awt.Desktop.Action
 
 class Q[S,A]:
 
@@ -12,17 +13,28 @@ class Q[S,A]:
     type Policy[S, A] = Map[S, A]
 
     val gamma = 1.0
-    val alpha = 0.0
+    val alpha = 0.1
     val epsilon = 0.1
 
-    
-    def episode(s: S) (q : Q[S, A] ) : Q[S, A] =
+    def init = ???
+
+    def episode(s: S) (q : Q[S, A] ) (step: (S, A) => (S, Double)) (terminalState: S) : Q[S,A] =
         val action = greedyEpsilon(s)(q)
-        val (s_m, r) = step(s)(action)
+        val (nextState, reward) = step(s, action)
+        val updatedQ = update(s, q, nextState, reward, action)
+        if (nextState != terminalState) then
+            episode(nextState)(updatedQ)(step)(terminalState)
+        else
+            q
         
 
-    
-    def step(s: S)(a: A) : (S, Double) = ??? 
+    def update(state: S, q: Q[S, A], nextState: S, reward: Double, action: A) : Q[S, A] = 
+        val maxNextQ = q.getOrElse(state, Map.empty).values.maxOption.getOrElse(0.0)
+        val currentQ = q.getOrElse(state, Map.empty).getOrElse(action, 0.0)
+        val updated = currentQ + alpha * (reward + (gamma*maxNextQ) - currentQ)
+        val updatedInnerMap = q.getOrElse(state, Map.empty) + (action -> updated)
+        q + (state -> updatedInnerMap)
+
 
     def greedyEpsilon (s : S) (q : Q[S, A]): A = 
         val random = RNG.Simple(42)
